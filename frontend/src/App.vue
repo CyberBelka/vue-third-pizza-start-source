@@ -11,10 +11,6 @@ import HomeView from "@/views/HomeView.vue";
 
 <style lang="scss">
 @import "@/assets/scss/app.scss";
-body {
-  justify-content: center;
-  align-items: center;
-}
 .main__wrapper {
   padding-bottom: 30px;
 
@@ -56,5 +52,4 @@ body {
     margin: 0 auto;
   }
 }
-
 </style>
