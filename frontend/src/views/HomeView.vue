@@ -1,4 +1,5 @@
 <script setup>
+import { reactive, computed } from "vue";
 import {
   normalizeDough,
   normalizeIngredients,
@@ -10,11 +11,56 @@ import dough from "@/mocks/dough.json";
 import ingredients from "@/mocks/ingredients.json";
 import sauces from "@/mocks/sauces.json";
 import sizes from "@/mocks/sizes.json";
+import ChoiceDough from "../modules/constructor/ChoiceDough.vue";
+import ChoiceSize from "../modules/constructor/ChoiceSize.vue";
+import ChoiceSauce from "../modules/constructor/ChoiceSauce.vue";
+import ChoiceIngredients from "../modules/constructor/ChoiceIngredients.vue";
+import PizzaConstructor from "../modules/constructor/PizzaConstructor.vue";
 
 const doughItems = dough.map(normalizeDough);
 const ingredientItems = ingredients.map(normalizeIngredients);
 const sauceItems = sauces.map(normalizeSauces);
 const sizeItems = sizes.map(normalizeSize);
+
+const pizza = reactive({
+  name: "",
+  dough: doughItems[0].value,
+  size: sizeItems[0].value,
+  sauce: sauceItems[0].value,
+  ingredients: ingredientItems.reduce((acc, item) => {
+    acc[item.value] = 0;
+    return acc;
+  }, {}),
+});
+
+const addIngredient = (ingredient) => {
+  pizza.ingredients[ingredient]++;
+};
+
+const updateIngredientAmount = (ingredient, count) => {
+  pizza.ingredients[ingredient] = count;
+};
+
+const price = computed(() => {
+  const doughPrice =
+    doughItems.find((item) => item.value === pizza.dough)?.price ?? 0;
+
+  const saucePrice =
+    sauceItems.find((item) => item.value === pizza.sauce)?.price ?? 0;
+
+  const sizeMultiplier =
+    sizeItems.find((item) => item.value === pizza.size)?.multiplier ?? 1;
+
+  const ingredientsPrice = ingredientItems
+    .map((item) => pizza.ingredients[item.value] * item.price)
+    .reduce((acc, item) => acc + item, 0);
+
+  return (doughPrice + saucePrice + ingredientsPrice) * sizeMultiplier;
+});
+
+const disableSubmit = computed(() => {
+  return pizza.name.length === 0 || price.value === 0;
+});
 </script>
 
 <template>
@@ -23,54 +69,12 @@ const sizeItems = sizes.map(normalizeSize);
       <div class="content__wrapper">
         <h1 class="title title--big">Конструктор пиццы</h1>
 
-        <div class="content__dough">
-          <div class="sheet">
-            <h2 class="title title--small sheet__title">Выберите тесто</h2>
+        <choice-dough
+          v-model="pizza.dough"
+          :dough-items="doughItems"
+        ></choice-dough>
 
-            <div class="sheet__content dough">
-              <label
-                v-for="doughType in doughItems"
-                :key="doughType.id"
-                class="dough__input"
-                :class="`dough__input--${doughType.value}`"
-              >
-                <input
-                  type="radio"
-                  name="dought"
-                  :value="doughType.value"
-                  class="visually-hidden"
-                  checked
-                />
-                <b>{{ doughType.name }}</b>
-                <span>{{ doughType.description }}</span>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <div class="content__diameter">
-          <div class="sheet">
-            <h2 class="title title--small sheet__title">Выберите размер</h2>
-
-            <div class="sheet__content diameter">
-              <label
-                v-for="sizeType in sizeItems"
-                :key="sizeType.id"
-                class="diameter__input"
-                :class="`diameter__input--${sizeType.value}`"
-              >
-                <input
-                  type="radio"
-                  name="diameter"
-                  :value="sizeType.value"
-                  class="visually-hidden"
-                  checked
-                />
-                <span>{{ sizeType.name }}</span>
-              </label>
-            </div>
-          </div>
-        </div>
+        <choice-size v-model="pizza.size" :size-items="sizeItems"></choice-size>
 
         <div class="content__ingredients">
           <div class="sheet">
@@ -79,57 +83,13 @@ const sizeItems = sizes.map(normalizeSize);
             </h2>
 
             <div class="sheet__content ingredients">
-              <div class="ingredients__sauce">
-                <p>Основной соус:</p>
+              <choice-sauce v-model="pizza.sauce" :sauce-items="sauceItems" />
 
-                <label
-                  v-for="sauceType in sauceItems"
-                  :key="sauceType.id"
-                  class="radio ingredients__input"
-                >
-                  <input type="radio" name="sauce" :value="sauceType.value" />
-                  <span>{{ sauceType.name }}</span>
-                </label>
-              </div>
-
-              <div class="ingredients__filling">
-                <p>Начинка:</p>
-
-                <ul class="ingredients__list">
-                  <li
-                    v-for="ingredientType in ingredientItems"
-                    :key="ingredientType.id"
-                    class="ingredients__item"
-                  >
-                    <span
-                      class="filling"
-                      :class="`filling--${ingredientType.value}`"
-                      >{{ ingredientType.name }}</span
-                    >
-                    <div class="counter counter--orange ingredients__counter">
-                      <button
-                        type="button"
-                        class="counter__button counter__button--minus"
-                        disabled
-                      >
-                        <span class="visually-hidden">Меньше</span>
-                      </button>
-                      <input
-                        type="text"
-                        name="counter"
-                        class="counter__input"
-                        value="0"
-                      />
-                      <button
-                        type="button"
-                        class="counter__button counter__button--plus"
-                      >
-                        <span class="visually-hidden">Больше</span>
-                      </button>
-                    </div>
-                  </li>
-                </ul>
-              </div>
+              <choice-ingredients
+                :values="pizza.ingredients"
+                :ingredient-items="ingredientItems"
+                @update="updateIngredientAmount"
+              />
             </div>
           </div>
         </div>
@@ -138,25 +98,25 @@ const sizeItems = sizes.map(normalizeSize);
           <label class="input">
             <span class="visually-hidden">Название пиццы</span>
             <input
+              v-model="pizza.name"
               type="text"
               name="pizza_name"
               placeholder="Введите название пиццы"
             />
           </label>
 
-          <div class="content__constructor">
-            <div class="pizza pizza--foundation--big-tomato">
-              <div class="pizza__wrapper">
-                <div class="pizza__filling pizza__filling--ananas"></div>
-                <div class="pizza__filling pizza__filling--bacon"></div>
-                <div class="pizza__filling pizza__filling--cheddar"></div>
-              </div>
-            </div>
-          </div>
+          <pizza-constructor
+            :dough="pizza.dough"
+            :sauce="pizza.sauce"
+            :ingredients="pizza.ingredients"
+            @drop="addIngredient"
+          />
 
           <div class="content__result">
-            <p>Итого: 0 ₽</p>
-            <button type="button" class="button" disabled>Готовьте!</button>
+            <p>Итого: {{ price }} ₽</p>
+            <button type="button" class="button" :disabled="disableSubmit">
+              Готовьте!
+            </button>
           </div>
         </div>
       </div>
@@ -164,7 +124,7 @@ const sizeItems = sizes.map(normalizeSize);
   </main>
 </template>
 
-<style lang="scss" scoped>
+<style lang="scss">
 @import "@/assets/scss/ds-system/ds";
 @import "@/assets/scss/mixins/mixins";
 
@@ -481,7 +441,7 @@ const sizeItems = sizes.map(normalizeSize);
       display: block;
     }
 
-    &--light {
+    &--small {
       b {
         &::before {
           background-image: url("@/assets/img/dough-light.svg");
@@ -489,7 +449,7 @@ const sizeItems = sizes.map(normalizeSize);
       }
     }
 
-    &--large {
+    &--big {
       b {
         &::before {
           background-image: url("@/assets/img/dough-large.svg");
@@ -982,7 +942,7 @@ const sizeItems = sizes.map(normalizeSize);
       width: 100%;
       height: 100%;
 
-      content: '';
+      content: "";
 
       background-image: inherit;
     }
