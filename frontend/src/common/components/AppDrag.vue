@@ -2,7 +2,7 @@
 import { DATA_TRANSFER_PAYLOAD } from "@/common/constants";
 
 const props = defineProps({
-  transferData: {
+  dataTransfer: {
     type: Object,
     required: true,
   },
